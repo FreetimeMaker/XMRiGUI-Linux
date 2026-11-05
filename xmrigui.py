@@ -29,7 +29,7 @@ class DBUSService(dbus.service.Object):
     @dbus.service.method('me.linuxheki.xmrigui', in_signature='s')
     def startup(self, args):
         self.args_manager(args)
-    
+
     def args_manager(self, args):
         args = args.split(' ')
 
@@ -42,7 +42,7 @@ class DBUSService(dbus.service.Object):
             if arg == 'start': start = True
             if arg == '--close': close_window = True
             if arg == '--open': open_window = True
-        
+
         if stop:
             for profile in self.profiles:
                 self.window.widgets[profile]['mine_switch'].set_active(False)
@@ -129,7 +129,7 @@ class Window(Gtk.Window):
             GLib.io_add_watch(self.processes[profile].stdout, GLib.IO_IN | GLib.IO_HUP, self.update_log, profile)
         except Exception as e:
             self.widgets[profile]['status_label'].set_text(f"Error: {str(e)}")
-    
+
     def stop_mining(self, profile, restart=True, save=True):
         os.system('killall xmrig')
         if profile in self.processes:
@@ -164,7 +164,7 @@ class Window(Gtk.Window):
                 self.config[profile]['coin'] = self.widgets[profile]['crypto_chooser'].get_active()
         except:
             pass
-            
+
         with open(self.settings_path, 'w') as f: f.write(json.dumps(self.config))
 
         if restart:
@@ -172,17 +172,17 @@ class Window(Gtk.Window):
                 if self.config[profile]['mine']:
                     self.stop_mining(profile, save=False)
                     self.start_mining(profile, save=False)
-    
+
     def show_window(self):
         self.draw()
         if not self.get_visible():
             self.show_all()
-    
+
     def hide_window(self, widget):
         self.hide()
 
     def draw(self):
-        self.set_title('XMRiGUI v1.8.2')
+        self.set_title('XMRiGUI v1.8.3')
         self.icon = GdkPixbuf.Pixbuf.new_from_file(filename=self.icon_path)
         self.set_icon(self.icon)
         self.set_border_width(20)
@@ -197,7 +197,7 @@ class Window(Gtk.Window):
             self.widgets[profile]['image'] = Gtk.Image.new_from_pixbuf(self.widgets[profile]['pixbuf'])
             self.widgets[profile]['name'] = Gtk.Label()
             self.widgets[profile]['name'].set_markup('<big>XMRiGUI</big>\nmade by Freetime Maker\n<a href="https://github.com/FreetimeMaker/XMRiGUI">Source code</a>')
-            
+
             self.widgets[profile]['mine_box'] = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
             self.widgets[profile]['mine_label'] = Gtk.Label()
             self.widgets[profile]['mine_label'].set_markup('<big>Mine</big>')
@@ -207,7 +207,7 @@ class Window(Gtk.Window):
             elif profile == self.profiles[1]: self.widgets[profile]['mine_switch'].connect('state-set', self.on_mine_switch1)
             elif profile == self.profiles[2]: self.widgets[profile]['mine_switch'].connect('state-set', self.on_mine_switch2)
             self.widgets[profile]['mine_switch'].props.valign = Gtk.Align.CENTER
-            
+
             self.widgets[profile]['mine_box'].pack_start(self.widgets[profile]['mine_label'], False, False, 10)
             self.widgets[profile]['mine_box'].pack_start(self.widgets[profile]['mine_switch'], False, False, 10)
             self.widgets[profile]['mine_box'].pack_start(self.widgets[profile]['status_label'], False, False, 10)
@@ -224,7 +224,7 @@ class Window(Gtk.Window):
             self.widgets[profile]['log_scroll'].set_min_content_height(150)
             self.widgets[profile]['log_scroll'].add(self.widgets[profile]['log_view'])
             self.widgets[profile]['log_expander'].add(self.widgets[profile]['log_scroll'])
-            
+
             self.widgets[profile]['settings'] = Gtk.Grid(column_homogeneous=True, column_spacing=10, row_spacing=10)
 
             self.widgets[profile]['pool_box'] = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=5)
@@ -305,7 +305,7 @@ class Window(Gtk.Window):
             for crypto in self.cryptos: self.widgets[profile]['crypto_chooser'].append_text(crypto)
             self.widgets[profile]['crypto_chooser'].set_active(self.config[profile]['coin'])
             self.widgets[profile]['crypto_chooser'].connect('changed', self.on_save)
-            
+
             self.widgets[profile]['default_args_box'] = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=5)
             self.widgets[profile]['default_args_label'] = Gtk.Label(label='Disable default args')
             self.widgets[profile]['default_args_switch'] = Gtk.Switch()
@@ -333,14 +333,14 @@ class Window(Gtk.Window):
             self.widgets[profile]['advanched_grid'].attach(self.widgets[profile]['advanched_save_button'], 0,7,2,1)
             self.widgets[profile]['advanched_box'].pack_start(self.widgets[profile]['advanched_grid'], False, False, 10)
             self.widgets[profile]['advanched_settings'].add(self.widgets[profile]['advanched_box'])
-            
+
             self.widgets[profile]['box'].pack_start(self.widgets[profile]['main_box'], False, False, 10)
             self.widgets[profile]['box'].pack_start(self.widgets[profile]['settings'], False, False, 10)
             self.widgets[profile]['box'].pack_start(self.widgets[profile]['advanched_settings'], False, False, 10)
             self.widgets[profile]['box'].pack_start(self.widgets[profile]['log_expander'], True, True, 10)
 
 
-        
+
         self.stack = Gtk.Stack()
         self.stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
         self.stack.set_transition_duration(850)
@@ -357,28 +357,28 @@ class Window(Gtk.Window):
         if state:
             self.start_mining(self.profiles[0])
         else: self.stop_mining(self.profiles[0])
-    
+
     def on_mine_switch1(self, widget, state):
         if state:
             self.start_mining(self.profiles[1])
         else: self.stop_mining(self.profiles[1])
-    
+
     def on_mine_switch2(self, widget, state):
         if state:
             self.start_mining(self.profiles[2])
         else: self.stop_mining(self.profiles[2])
-    
+
     def on_save(self, widget, state=None):
         self.save()
 
     def profile0_menu(self, widget):
         if self.config[self.profiles[0]]['mine']: self.stop_mining(self.profiles[0])
         else: self.start_mining(self.profiles[0])
-    
+
     def profile1_menu(self, widget):
         if self.config[self.profiles[1]]['mine']: self.stop_mining(self.profiles[1])
         else: self.start_mining(self.profiles[1])
-    
+
     def profile2_menu(self, widget):
         if self.config[self.profiles[2]]['mine']: self.stop_mining(self.profiles[2])
         else: self.start_mining(self.profiles[2])
@@ -386,12 +386,12 @@ class Window(Gtk.Window):
     def update_log(self, source, condition, profile):
         if condition & GLib.IO_HUP:
             return False
-        
+
         line = source.readline().decode('utf-8', errors='replace')
         if line:
             buffer = self.widgets[profile]['log_buffer']
             lower_line = line.lower()
-            
+
             # Farbschema bestimmen
             tag = None
             if "accepted" in lower_line:
@@ -408,7 +408,7 @@ class Window(Gtk.Window):
                 buffer.insert_with_tags_by_name(buffer.get_end_iter(), line, tag)
             else:
                 buffer.insert(buffer.get_end_iter(), line)
-            
+
             # Limit buffer to last 500 lines
             if buffer.get_line_count() > 500:
                 buffer.delete(buffer.get_start_iter(), buffer.get_iter_at_line(1))
@@ -421,7 +421,7 @@ class Window(Gtk.Window):
             speed_match = re.search(r"speed 10s/60s/15m\s+([\d.]+)", line)
             if speed_match:
                 self.widgets[profile]['last_speed'] = speed_match.group(1)
-            
+
             shares_match = re.search(r"accepted\s+\((\d+)/(\d+)\)", line)
             if shares_match:
                 self.widgets[profile]['last_shares'] = f"{shares_match.group(1)}/{shares_match.group(2)}"
@@ -454,7 +454,7 @@ class Window(Gtk.Window):
             self.widgets[profile]['status_label'].set_text('Status: Initializing...') # Default status before actual state is known
             self.widgets[profile]['info_label'] = Gtk.Label()
             self.widgets[profile]['info_label'].set_markup('<b>Speed:</b> 0 H/s | <b>Shares:</b> 0/0')
-            
+
             # Log Buffer mit Farbtags initialisieren
             buffer = Gtk.TextBuffer()
             buffer.create_tag("info", foreground="#3498db")    # Blau für Netzwerk
@@ -560,7 +560,7 @@ class Window(Gtk.Window):
         "args": "",
         "default_args": false
     }
-    
+
 }
 '''
 
@@ -601,7 +601,7 @@ class AppIndicator():
             if self.window.config[profile]['mine']:
                 self.window.stop_mining(profile, restart=False, save=False)
         Gtk.main_quit()
-    
+
     def show(self, widget):
         if not self.window.is_visible():
             self.window.show_window()
