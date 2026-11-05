@@ -7,6 +7,7 @@ Built with **Python 3** and **GTK 3**.
 ![Preview of XMRiGUI](preview.png)
 
 ## This Repo is sponsored by
+
 [![Sponsor](https://readme.cash/i/9s3hhz665u.svg)](https://readme.cash/c/9s3hhz665u)
 
 ## Features
@@ -53,7 +54,7 @@ sudo apt install xmrigui
 1. Download the `.rpm` file or use the YUM Repository:
 
 ```bash
-sudo nano /etc/yum.repos.d/freetime.repo
+sudo nano /etc/yum.repos.d/Freetime-Repo.repo
 ```
 
 then add:
