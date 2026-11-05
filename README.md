@@ -6,6 +6,9 @@ Built with **Python 3** and **GTK 3**.
 
 ![Preview of XMRiGUI](preview.png)
 
+## This Repo is sponsored by
+[![Sponsor](https://readme.cash/i/9s3hhz665u.svg)](https://readme.cash/c/9s3hhz665u)
+
 ## Features
 
 ### Supported Miners
