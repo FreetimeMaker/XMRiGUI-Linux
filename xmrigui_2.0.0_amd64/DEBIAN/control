@@ -1,0 +1,7 @@
+Package: XMRiGUI
+Source: xmrigui
+Version: 2.0.0
+Architecture: amd64
+Maintainer: Freetime Maker <FreetimeMaker@proton.me>
+Description: GUI for XMRig crypto miner
+Depends: python3 (>= 3.9), python3-pyqt6, libuv1-dev

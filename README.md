@@ -2,7 +2,7 @@
 
 XMRiGUI is a free and open-source crypto miner for Linux. It provides a modern, high-performance GUI for [XMRig](https://github.com/xmrig/xmrig).
 
-Built with **Python 3** and **GTK 3**.
+Built with **Python 3** and **PyQt6**. D-Bus integration uses **QtDBus**, which is included in PyQt6 (no separate `dbus-python` package is needed).
 
 ![Preview of XMRiGUI](preview.png)
 
@@ -73,29 +73,51 @@ then run:
 sudo dnf install xmrigui
 ```
 
+## Running from Source
+
+Run these commands from the repository root using Python 3.9 or newer:
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -r requirements.txt
+python xmrigui.py
+```
+
+On Debian / Ubuntu, install `python3-venv` to create the virtual environment. Alternatively, use the system packages without a virtual environment:
+
+```bash
+sudo apt install python3 python3-pyqt6 python3-requests
+python3 xmrigui.py
+```
+
+`PyQt6.QtDBus` is included in PyQt6 / `python3-pyqt6`; GTK, PyGObject, AppIndicator bindings and `dbus-python` are not required by the migrated app.
+
+**Migration status:** These dependencies and instructions target the PyQt6 app. If your checkout's `xmrigui.py` still imports `gi` or `dbus`, its app-code migration must be completed before it can run with these dependencies.
+
+Mining requires an executable XMRig binary at `/opt/xmrigui/xmrig`; `sudo make install` installs the bundled `xmrig` there.
+
 ## Makefile Commands
 
-If you want to build XMRiGUI from source, you'll need to have:
+The Makefile installs the Python script and bundled miner directly; PyInstaller is not required.
 
-- python3
-- gtk3
-- pyinstaller
-- pygobject
-- gir1.2-ayatanaappindicator3-0.1
-  <br>
-  <br>
+Before `make install`, `make deb` or `make rpm`, the required dependencies are installed automatically using APT (Debian / Ubuntu) or DNF (Fedora / Red Hat). This includes Python, PyQt6, libuv and the packaging tool needed by the selected build target (`dpkg-deb` or `rpmbuild`). Dependency installation requires network access and uses `sudo` unless already running as root.
 
-Build:
+To skip dependency installation in an already prepared environment, use `make deb SKIP_DEPS=1` or `make rpm SKIP_DEPS=1`. Other distributions must install the dependencies manually and use `SKIP_DEPS=1`.
+
+Install:
 
 `sudo make install`
 
-or if you want deb package:
+or if you want a deb package:
 
-`sudo make deb`
+`make deb`
 
-or for the rpm package:
+The Debian package declares `python3-pyqt6` as a runtime dependency, including QtDBus.
 
-`sudo make rpm`
+Build an RPM package:
+
+`make rpm`
 <br>
 <br>
 
@@ -113,6 +135,14 @@ If you find this tool useful, consider supporting development:
 - **Monero (XMR)**: `49szz88CqMWGgyDxp7VqvBS62pGLQcV4YPSBHcLwtxAXLz1Wngf8vW6is4w13Au7C2RovrTiJQaGDV5VBhFnyMBsM44Pn2P`
 
 ### Development
+
+Run the headless GUI and D-Bus tests with the development environment activated:
+
+```bash
+dbus-run-session -- python -m unittest discover -s tests -v
+```
+
+The tests use temporary configurations and fake miners; no real mining is started.
 
 Pull requests and bug reports are welcome on [GitHub](https://github.com/FreetimeMaker/XMRiGUI-Linux).
 

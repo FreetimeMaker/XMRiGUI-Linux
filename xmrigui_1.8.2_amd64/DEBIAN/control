@@ -1,7 +1,0 @@
-Package: XMRiGUI
-Source: xmrigui
-Version: 1.8.2
-Architecture: amd64
-Maintainer: Freetime Maker <jamieachatz@gmail.com>
-Description: GUI for XMRig crypto miner
-Depends: python3 (>= 3.6), python3-pip, libuv1-dev, gir1.2-ayatanaappindicator3-0.1
