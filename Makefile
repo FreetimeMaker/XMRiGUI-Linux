@@ -20,13 +20,13 @@ define install_dependencies
 endef
 
 install-deps:
-	$(call install_dependencies,python3 python3-pyqt6 libuv1-dev,python3 python3-qt6 libuv-devel)
+	$(call install_dependencies,python3 python3-pyqt6 libuv1-dev,python3 python3-pyqt6 libuv-devel)
 
 deb-deps:
-	$(call install_dependencies,python3 python3-pyqt6 libuv1-dev dpkg-dev,python3 python3-qt6 libuv-devel dpkg)
+	$(call install_dependencies,python3 python3-pyqt6 libuv1-dev dpkg-dev,python3 python3-pyqt6 libuv-devel dpkg)
 
 rpm-deps:
-	$(call install_dependencies,python3 python3-pyqt6 libuv1-dev rpm,python3 python3-qt6 libuv-devel rpm-build)
+	$(call install_dependencies,python3 python3-pyqt6 libuv1-dev rpm,python3 python3-pyqt6 libuv-devel rpm-build)
 
 install: install-deps
 	mkdir -p /opt/xmrigui
