@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := install
 .PHONY: install uninstall deb rpm install-deps deb-deps rpm-deps
 
-package = xmrigui_1.8.2_amd64
+package = xmrigui_2.0.0_amd64
 SKIP_DEPS ?= 0
 SUDO ?= $(shell if [ "$$(id -u)" -ne 0 ]; then printf sudo; fi)
 
