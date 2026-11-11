@@ -148,6 +148,64 @@ class WindowTests(unittest.TestCase):
         )
         self.assertNotIn("profile-0", self.window.processes)
 
+    def test_validation_blocks_start_and_marks_field(self):
+        w = self.window.widgets["profile-0"]
+        w["pool_entry"].setText("not a pool")
+        w["mine_switch"].setChecked(True)
+        self.assertNotIn("profile-0", self.window.processes)
+        self.assertTrue(w["pool_error"].text())
+        self.assertFalse(w["mine_switch"].isChecked())
+
+    def test_restart_backoff_and_manual_stop_cancels(self):
+        profile = "profile-0"
+        self.window.xmrig_path = sys.executable
+        self.window.mining_arguments = lambda p: ["-c", "print('connection refused')"]
+        w = self.window.widgets[profile]
+        w["auto_restart_switch"].setChecked(True)
+        w["mine_switch"].setChecked(True)
+        self.wait_until(lambda: w["restart_timer"].isActive())
+        self.assertEqual(w["retries"], 1)
+        self.assertTrue(self.window.config[profile]["mine"])
+        w["mine_switch"].setChecked(False)
+        self.assertFalse(w["restart_timer"].isActive())
+        self.assertFalse(self.window.config[profile]["mine"])
+
+    def test_restart_limit(self):
+        profile = "profile-0"
+        self.window.xmrig_path = sys.executable
+        self.window.mining_arguments = lambda p: ["-c", "pass"]
+        w = self.window.widgets[profile]
+        w["auto_restart_switch"].setChecked(True)
+        w["mine_switch"].setChecked(True)
+        self.wait_until(lambda: w["restart_timer"].isActive())
+        w["restart_timer"].stop()
+        w["retries"] = 5
+        self.window.start_mining(profile, save=False, retry=True)
+        self.wait_until(lambda: not self.window.config[profile]["mine"])
+        self.assertFalse(w["restart_timer"].isActive())
+
+    def test_profile_rename_and_duplicate(self):
+        with patch.object(
+            xmrigui.QInputDialog, "getText", return_value=("Quiet CPU", True)
+        ):
+            self.window.rename_profile("profile-0")
+        self.assertEqual(self.window.tabs.tabText(0), "Quiet CPU")
+        target = self.window.config["profile-1"]["name"] + " (profile-1)"
+        with (
+            patch.object(xmrigui.QInputDialog, "getItem", return_value=(target, True)),
+            patch.object(
+                xmrigui.QMessageBox,
+                "question",
+                return_value=xmrigui.QMessageBox.StandardButton.Yes,
+            ),
+        ):
+            self.window.duplicate_profile("profile-0")
+        self.assertEqual(self.window.config["profile-1"]["name"], "Quiet CPU (copy)")
+        self.assertFalse(self.window.config["profile-1"]["mine"])
+        self.assertIsNot(
+            self.window.config["profile-0"], self.window.config["profile-1"]
+        )
+
     def test_invalid_config_is_not_overwritten(self):
         self.window.settings_path.write_text("{broken")
         with self.assertRaises(ValueError):

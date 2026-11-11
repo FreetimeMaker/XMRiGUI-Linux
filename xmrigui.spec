@@ -9,6 +9,7 @@ Source0:        xmrigui.py
 Source1:        xmrig
 Source2:        xmrigui.png
 Source3:        xmrigui.desktop
+Source4:        mining_tools.py
 
 Requires:       python3 python3-pyqt6
 
@@ -25,6 +26,7 @@ mkdir -p %{buildroot}/usr/local/bin
 mkdir -p %{buildroot}/usr/share/icons/hicolor/256x256/apps
 mkdir -p %{buildroot}/usr/share/applications
 
+install -m 644 %{_sourcedir}/mining_tools.py %{buildroot}/usr/local/bin/mining_tools.py
 install -m 755 %{_sourcedir}/xmrigui.py %{buildroot}/usr/local/bin/xmrigui
 install -m 755 %{_sourcedir}/xmrig %{buildroot}/opt/xmrigui/xmrig
 install -m 644 %{_sourcedir}/xmrigui.png %{buildroot}/opt/xmrigui/xmrigui.png
@@ -32,6 +34,7 @@ install -m 644 %{_sourcedir}/xmrigui.png %{buildroot}/usr/share/icons/hicolor/25
 install -m 644 %{_sourcedir}/xmrigui.desktop %{buildroot}/usr/share/applications/xmrigui.desktop
 
 %files
+/usr/local/bin/mining_tools.py
 /usr/local/bin/xmrigui
 /opt/xmrigui/
 /usr/share/icons/hicolor/256x256/apps/xmrigui.png

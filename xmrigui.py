@@ -1,19 +1,22 @@
 #!/usr/bin/env python3
 
 import codecs
+import copy
 import json
 import os
 import re
 import shlex
 import sys
+import time
 from pathlib import Path
 
-from PyQt6.QtCore import QObject, QProcess, Qt, pyqtClassInfo, pyqtSlot
+from PyQt6.QtCore import QObject, QProcess, Qt, QTimer, pyqtClassInfo, pyqtSlot
 from PyQt6.QtDBus import QDBusConnection, QDBusInterface, QDBusMessage
 from PyQt6.QtGui import (
     QColor,
     QFontDatabase,
     QIcon,
+    QIntValidator,
     QPixmap,
     QTextCharFormat,
     QTextCursor,
@@ -22,9 +25,11 @@ from PyQt6.QtWidgets import (
     QApplication,
     QCheckBox,
     QComboBox,
+    QFileDialog,
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QLineEdit,
     QMainWindow,
@@ -38,6 +43,8 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
+from mining_tools import HashrateChart, SessionStats, redact_log, validate_settings
 
 SERVICE = "com.freetime.xmrigui"
 OBJECT_PATH = "/com/freetime/xmrigui"
@@ -77,6 +84,9 @@ class Window(QMainWindow):
         self.config = self.get_config()
         self.draw()
         self.tray = self.build_tray()
+        self.stats_timer = QTimer(self)
+        self.stats_timer.timeout.connect(self.refresh_stats)
+        self.stats_timer.start(1000)
         for profile in self.profiles:
             if self.config[profile]["mine"]:
                 self.start_mining(profile, save=False)
@@ -148,6 +158,8 @@ class Window(QMainWindow):
         self.defaults = {
             profile: {
                 "mine": False,
+                "name": f"Profile {self.profiles.index(profile) + 1}",
+                "auto_restart": False,
                 "pool": pool,
                 "user": "49szz88CqMWGgyDxp7VqvBS62pGLQcV4YPSBHcLwtxAXLz1Wngf8vW6is4w13Au7C2RovrTiJQaGDV5VBhFnyMBsM44Pn2P",
                 "password": "DONATE",
@@ -184,9 +196,17 @@ class Window(QMainWindow):
         self.resize(800, 720)
         tabs = QTabWidget()
         self.setCentralWidget(tabs)
+        self.tabs = tabs
         for number, profile in enumerate(self.profiles, 1):
             config = self.config[profile]
             widgets = self.widgets[profile] = {}
+            widgets["stats"] = SessionStats()
+            widgets["retries"] = 0
+            widgets["restart_timer"] = QTimer(self)
+            widgets["restart_timer"].setSingleShot(True)
+            widgets["restart_timer"].timeout.connect(
+                lambda p=profile: self.start_mining(p, save=False, retry=True)
+            )
             page = QWidget()
             layout = QVBoxLayout(page)
             layout.setContentsMargins(20, 20, 20, 20)
@@ -219,6 +239,17 @@ class Window(QMainWindow):
             header.addLayout(mining)
             layout.addLayout(header)
 
+            profile_buttons = QHBoxLayout()
+            for title, callback in (
+                ("Rename profile", self.rename_profile),
+                ("Duplicate profile…", self.duplicate_profile),
+            ):
+                button = QPushButton(title)
+                button.clicked.connect(
+                    lambda checked=False, p=profile, fn=callback: fn(p)
+                )
+                profile_buttons.addWidget(button)
+            layout.addLayout(profile_buttons)
             form = QFormLayout()
             for key, label, setting in (
                 ("pool_entry", "Pool:", "pool"),
@@ -228,7 +259,17 @@ class Window(QMainWindow):
                 ("threads_entry", "Threads:", "threads"),
             ):
                 widgets[key] = QLineEdit(str(config[setting]))
+                if setting in ("threads", "donate"):
+                    widgets[key].setValidator(
+                        QIntValidator(
+                            0, 100 if setting == "donate" else 2147483647, self
+                        )
+                    )
                 form.addRow(label, widgets[key])
+                error = widgets[setting + "_error"] = QLabel()
+                error.setStyleSheet("color: #d64545")
+                error.setWordWrap(True)
+                form.addRow(error)
             save_button = QPushButton("Save")
             save_button.clicked.connect(lambda checked=False: self.save())
             form.addRow(save_button)
@@ -255,6 +296,13 @@ class Window(QMainWindow):
             advanced_form.addRow("Coin:", widgets["crypto_chooser"])
             widgets["args_entry"] = QLineEdit(config["args"])
             advanced_form.addRow("Additional args:", widgets["args_entry"])
+            widgets["args_error"] = QLabel()
+            advanced_form.addRow(widgets["args_error"])
+            widgets["auto_restart_switch"] = QCheckBox(
+                "Restart after unexpected exit (maximum 5 attempts)"
+            )
+            widgets["auto_restart_switch"].setChecked(config["auto_restart"])
+            advanced_form.addRow(widgets["auto_restart_switch"])
             advanced_save = QPushButton("Save")
             advanced_save.clicked.connect(lambda checked=False: self.save())
             advanced_form.addRow(advanced_save)
@@ -262,6 +310,22 @@ class Window(QMainWindow):
             advanced_content.hide()
             advanced.toggled.connect(advanced_content.setVisible)
             layout.addWidget(advanced)
+
+            widgets["chart"] = HashrateChart()
+            layout.addWidget(widgets["chart"])
+            widgets["session_label"] = QLabel()
+            layout.addWidget(widgets["session_label"])
+            diagnosis = QGroupBox("Diagnostics")
+            diagnostic_layout = QVBoxLayout(diagnosis)
+            widgets["diagnostics"] = QLabel(
+                f"Binary: {self.xmrig_path}\nVersion / Huge Pages / permissions: not reported yet"
+            )
+            widgets["diagnostics"].setWordWrap(True)
+            diagnostic_layout.addWidget(widgets["diagnostics"])
+            export = QPushButton("Export redacted log…")
+            export.clicked.connect(lambda checked=False, p=profile: self.export_log(p))
+            diagnostic_layout.addWidget(export)
+            layout.addWidget(diagnosis)
 
             output = QGroupBox("Miner Output (Live)")
             output.setCheckable(True)
@@ -279,7 +343,7 @@ class Window(QMainWindow):
             scroll = QScrollArea()
             scroll.setWidgetResizable(True)
             scroll.setWidget(page)
-            tabs.addTab(scroll, f"Profile {number}")
+            tabs.addTab(scroll, str(config["name"]))
 
         # Connect only after every profile's controls are ready for save().
         for profile in self.profiles:
@@ -287,7 +351,7 @@ class Window(QMainWindow):
             widgets["mine_switch"].toggled.connect(
                 lambda checked, p=profile: self.set_mining(p, checked)
             )
-            for key in ("cuda", "opencl", "cpu", "default_args"):
+            for key in ("cuda", "opencl", "cpu", "default_args", "auto_restart"):
                 widgets[f"{key}_switch"].toggled.connect(lambda checked: self.save())
             widgets["crypto_chooser"].currentIndexChanged.connect(
                 lambda index: self.save()
@@ -306,7 +370,7 @@ class Window(QMainWindow):
                 ("args", "args_entry"),
             ):
                 config[setting] = widgets[key].text()
-            for key in ("cuda", "opencl", "cpu", "default_args"):
+            for key in ("cuda", "opencl", "cpu", "default_args", "auto_restart"):
                 config[key] = widgets[f"{key}_switch"].isChecked()
             config["coin"] = widgets["crypto_chooser"].currentIndex()
         self.settings_path.write_text(json.dumps(self.config), encoding="utf-8")
@@ -357,12 +421,37 @@ class Window(QMainWindow):
         args.extend(shlex.split(config["args"]))
         return args
 
-    def start_mining(self, profile, save=True):
+    def start_mining(self, profile, save=True, retry=False):
         if profile in self.processes:
             return
         if save:
             self.config[profile]["mine"] = True
             self.save(restart=False)
+        widgets = self.widgets[profile]
+        widgets["restart_timer"].stop()
+        errors = validate_settings(self.config[profile])
+        for key in ("pool", "user", "threads", "donate", "args"):
+            widgets[key + "_error"].setText(errors.get(key, ""))
+            widgets[
+                {
+                    "pool": "pool_entry",
+                    "user": "user_entry",
+                    "threads": "threads_entry",
+                    "donate": "donate_entry",
+                    "args": "args_entry",
+                }[key]
+            ].setToolTip(errors.get(key, ""))
+        if errors:
+            self.mining_failed(
+                profile, "Invalid settings: " + "; ".join(errors.values())
+            )
+            return
+        if not retry:
+            widgets["retries"] = 0
+            widgets["stats"].start()
+            widgets["chart"].clear()
+            widgets["last_speed"] = "0.0"
+            widgets["last_shares"] = "0/0"
         self.sync_mine_switch(profile, True)
         try:
             args = self.mining_arguments(profile)
@@ -384,10 +473,12 @@ class Window(QMainWindow):
         process.finished.connect(
             lambda code, status: self.process_finished(profile, process, code)
         )
-        widgets["status_label"].setText("Status: Mining...")
+        widgets["status_label"].setText("Status: Starting…")
         process.start(self.xmrig_path, args)
 
     def stop_mining(self, profile, save=True):
+        self.widgets[profile]["restart_timer"].stop()
+        self.widgets[profile]["stats"].stop()
         process = self.processes.pop(profile, None)
         if process is not None:
             # Stop only this profile's child, never unrelated XMRig processes.
@@ -404,6 +495,7 @@ class Window(QMainWindow):
             self.save(restart=False)
 
     def mining_failed(self, profile, message):
+        self.widgets[profile]["stats"].stop()
         self.config[profile]["mine"] = False
         self.sync_mine_switch(profile, False)
         self.widgets[profile]["status_label"].setText(f"Error: {message}")
@@ -422,7 +514,26 @@ class Window(QMainWindow):
             return
         self.read_output(profile, process, final=True)
         self.processes.pop(profile)
-        self.mining_failed(profile, f"Miner exited (code {code}).")
+        widgets = self.widgets[profile]
+        if (
+            not self.shutting_down
+            and self.config[profile]["mine"]
+            and self.config[profile]["auto_restart"]
+            and widgets["retries"] < 5
+        ):
+            delay = min(60, 2 ** (widgets["retries"] + 1))
+            widgets["retries"] += 1
+            widgets["last_speed"] = "0.0"
+            widgets["chart"].add_sample(0)
+            widgets["status_label"].setText(
+                f"Status: Connection lost / miner exited ({code}). Restart {widgets['retries']}/5 in {delay}s"
+            )
+            widgets["restart_timer"].start(delay * 1000)
+        else:
+            self.mining_failed(
+                profile,
+                f"Miner exited (code {code}); automatic restart disabled or limit reached.",
+            )
         process.deleteLater()
 
     def read_output(self, profile, process, final=False):
@@ -462,15 +573,53 @@ class Window(QMainWindow):
         log.ensureCursorVisible()
         speed = re.search(r"speed 10s/60s/15m\s+([\d.]+)", line)
         if speed:
-            widgets["last_speed"] = speed.group(1)
-        shares = re.search(r"accepted\s+\((\d+)/(\d+)\)", line)
+            unit = re.search(r"\b([kMGT]?)H/s", line)
+            value = float(speed.group(1)) * {
+                "": 1,
+                "k": 1e3,
+                "M": 1e6,
+                "G": 1e9,
+                "T": 1e12,
+            }.get(unit.group(1) if unit else "", 1)
+            widgets["last_speed"] = f"{value:g}"
+            widgets["stats"].add_speed(value)
+            widgets["chart"].add_sample(value)
+        shares = re.search(r"(?:accepted|rejected)\s+\((\d+)/(\d+)\)", line)
         if shares:
             widgets["last_shares"] = f"{shares.group(1)}/{shares.group(2)}"
+            widgets["stats"].update_shares(int(shares.group(1)), int(shares.group(2)))
         widgets["info_label"].setText(
             f"<b>Speed:</b> {widgets.get('last_speed', '0.0')} H/s | "
             f"<b>Shares:</b> {widgets.get('last_shares', '0/0')}"
         )
-        if "connected to" in lower_line:
+        if any(
+            word in lower_line
+            for word in (
+                "xmrig",
+                "huge pages",
+                "hugepages",
+                "permission",
+                "msr",
+                "access denied",
+            )
+        ):
+            previous = widgets["diagnostics"].text().splitlines()[-9:]
+            widgets["diagnostics"].setText("\n".join(previous + [line]))
+        if any(
+            word in lower_line
+            for word in (
+                "connection refused",
+                "connection reset",
+                "timeout",
+                "no active pools",
+                "dns error",
+                "connect error",
+            )
+        ):
+            widgets["status_label"].setText(
+                "Status: Connection lost; XMRig is reconnecting…"
+            )
+        elif "connected to" in lower_line:
             pool = re.search(r"to\s+([^\s]+)", line)
             widgets["status_label"].setText(
                 f"Status: Connected with {pool.group(1) if pool else 'Pool'}"
@@ -482,6 +631,102 @@ class Window(QMainWindow):
         elif "accepted" in lower_line:
             widgets["status_label"].setText("Status: Mining (Share akzeptiert!)")
 
+    def refresh_stats(self):
+        for widgets in self.widgets.values():
+            stats = widgets["stats"].snapshot()
+            seconds = int(stats["runtime"])
+            widgets["session_label"].setText(
+                f"Runtime: {seconds // 3600:02}:{seconds // 60 % 60:02}:{seconds % 60:02} | "
+                f"Average (samples): {stats['average']:.1f} H/s | "
+                f"Rejected: {stats['rejection_ratio']:.1%}"
+            )
+
+    def rename_profile(self, profile):
+        name, ok = QInputDialog.getText(
+            self, "Rename profile", "Name:", text=self.config[profile]["name"]
+        )
+        if ok and name.strip():
+            self.config[profile]["name"] = name.strip()[:80]
+            self.tabs.setTabText(
+                self.profiles.index(profile), self.config[profile]["name"]
+            )
+            self.save(restart=False)
+            self.refresh_tray_names()
+
+    def duplicate_profile(self, profile):
+        targets = [p for p in self.profiles if p != profile]
+        labels = [f"{self.config[p]['name']} ({p})" for p in targets]
+        choice, ok = QInputDialog.getItem(
+            self, "Duplicate profile", "Replace target profile:", labels, 0, False
+        )
+        if not ok:
+            return
+        target = targets[labels.index(choice)]
+        if (
+            QMessageBox.question(
+                self,
+                "Replace profile",
+                "Overwrite this profile's settings and stop its miner?",
+            )
+            != QMessageBox.StandardButton.Yes
+        ):
+            return
+        self.save(restart=False)
+        self.stop_mining(target, save=False)
+        config = copy.deepcopy(self.config[profile])
+        config.update(mine=False, name=config["name"] + " (copy)")
+        self.config[target] = config
+        w = self.widgets[target]
+        for key in ("pool", "user", "password", "donate", "threads", "args"):
+            w[{"password": "pass_entry"}.get(key, key + "_entry")].setText(
+                str(config[key])
+            )
+        controls = [
+            (w[key + "_switch"], config[key])
+            for key in ("cuda", "opencl", "cpu", "default_args", "auto_restart")
+        ]
+        for control, value in controls:
+            blocked = control.blockSignals(True)
+            control.setChecked(value)
+            control.blockSignals(blocked)
+        chooser = w["crypto_chooser"]
+        blocked = chooser.blockSignals(True)
+        chooser.setCurrentIndex(config["coin"])
+        chooser.blockSignals(blocked)
+        self.sync_mine_switch(target, False)
+        self.tabs.setTabText(self.profiles.index(target), config["name"])
+        self.save(restart=False)
+        self.refresh_tray_names()
+
+    def refresh_tray_names(self):
+        if self.tray is not None:
+            for profile, action in zip(
+                self.profiles, self.tray.contextMenu().actions()
+            ):
+                action.setText("Toggle " + self.config[profile]["name"])
+
+    def export_log(self, profile):
+        filename, _ = QFileDialog.getSaveFileName(
+            self, "Export redacted log", "xmrigui-log.txt", "Text files (*.txt)"
+        )
+        if not filename:
+            return
+        w = self.widgets[profile]
+        draft = dict(
+            self.config[profile],
+            user=w["user_entry"].text(),
+            password=w["pass_entry"].text(),
+            pool=w["pool_entry"].text(),
+            args=w["args_entry"].text(),
+        )
+        text = w["diagnostics"].text() + "\n\n" + w["log_view"].toPlainText()
+        try:
+            Path(filename).write_text(
+                redact_log(text, [*self.config.values(), draft]), encoding="utf-8"
+            )
+        except OSError as error:
+            QMessageBox.warning(self, "Export failed", str(error))
+
     def build_tray(self):
         if not QSystemTrayIcon.isSystemTrayAvailable():
             return None
@@ -489,7 +734,7 @@ class Window(QMainWindow):
         tray.setToolTip("XMRiGUI")
         menu = QMenu(self)
         for number, profile in enumerate(self.profiles, 1):
-            menu.addAction(f"Toggle Profile {number}").triggered.connect(
+            menu.addAction("Toggle " + self.config[profile]["name"]).triggered.connect(
                 lambda checked=False, p=profile: self.widgets[p]["mine_switch"].toggle()
             )
         menu.addSeparator()
@@ -522,6 +767,7 @@ class Window(QMainWindow):
 
     def shutdown(self):
         self.shutting_down = True
+        self.stats_timer.stop()
         for profile in self.profiles:
             self.stop_mining(profile, save=False)
         if self.tray is not None:

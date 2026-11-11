@@ -22,6 +22,11 @@ Built with **Python 3** and **PyQt6**. D-Bus integration uses **QtDBus**, which 
 - **Intelligent Auto-Switching**: Automatically selects the best miner binary based on the selected coin.
 - **Real-time Stats**: Live tracking of Hashrate (H/s) and Shares (Accepted/Rejected).
 - **System Tray Integration**: Run the miner in the background with quick-access controls.
+- **Pre-start validation**: Field-level errors for pool addresses, empty users, thread/donation ranges and malformed argument quoting. Threads `0` means automatic selection; donation accepts `0–100` (the miner may impose its own minimum).
+- **Session statistics**: A bounded, time-based hashrate chart, runtime, sample-average hashrate and rejected-share percentage. A manual start begins a fresh session; automatic retries keep its history. Values come from XMRig output, not a profitability estimate.
+- **Controlled restart**: Optional per-profile automatic restart after unexpected process exit, with delays of 2, 4, 8, 16 and 32 seconds. After five retries it stops. Manual stop cancels pending retries; connection errors while XMRig is alive are left to its own reconnect logic. Disabled by default.
+- **Diagnostics and log export**: Displays the binary path and version, Huge Pages, MSR and permission messages when reported by XMRig. Export masks configured credentials, pools, additional arguments and common credential patterns. Redaction is best-effort: review exported logs before sharing. Only the latest 500 log blocks are retained.
+- **Named profiles**: Rename profiles and copy settings into another of the three slots, with confirmation before overwriting. The destination miner is stopped and never starts automatically after copying.
 - **Cross-Platform**: Native look and feel on both Linux.
 
 ## Installation
