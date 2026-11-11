@@ -1,10 +1,9 @@
 Name:           xmrigui
-Version:        1.8.2
+Version:        2.0.0
 Release:        1%{?dist}
 Summary:        XMRiGUI Application
 License:        GPLv3
 BuildArch:      x86_64
-
 Source0:        xmrigui.py
 Source1:        xmrig
 Source2:        xmrigui.png

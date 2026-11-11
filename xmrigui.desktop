@@ -1,9 +1,9 @@
 [Desktop Entry]
 Encoding=UTF-8
-Version=1.0.0
+Version=1.0
 Type=Application
 Terminal=false
-Exec=XMRiGUI
+Exec=xmrigui
 Name=XMRiGUI
 Icon=xmrigui
 Comment=A modern GUI for XMRig and other miners
