@@ -44,7 +44,7 @@ sudo nano /etc/apt/sources.list.d/Freetime-Repo.list
 then add:
 
 ```text
-deb [trusted=yes arch=amd64] https://apt.fury.io/freetimemaker/ /
+deb [trusted=yes arch=amd64] https://https://repo.free-time.me/apt/
 ```
 
 then run:
@@ -67,7 +67,7 @@ then add:
 ```text
 [freetimemaker]
 name=Freetime Repo
-baseurl=https://yum.fury.io/freetimemaker/
+baseurl=https://repo.free-time.me/yum/
 enabled=1
 gpgcheck=0
 ```
