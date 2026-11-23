@@ -102,6 +102,16 @@ python3 xmrigui.py
 
 Mining requires an executable XMRig binary at `/opt/xmrigui/xmrig`; `sudo make install` installs the bundled `xmrig` there.
 
+## WSL 2 (Windows)
+
+Run the Linux app inside a WSL 2 distribution with WSLg, as your normal user (not with `sudo`). If no window opens, check `wsl --list --verbose` in PowerShell and update WSL with `wsl --update` if needed. If Qt reports that the `xcb` platform plugin cannot load when using the pip install on Ubuntu, install `libxcb-cursor0`.
+
+XMRiGUI needs a session D-Bus to forward launches to an existing instance. If it reports that it cannot connect, install `dbus` in Ubuntu and start the app with `dbus-run-session -- xmrigui` (or `dbus-run-session -- python xmrigui.py` from source). Launches in separate private D-Bus sessions do not share the single-instance check; run the app only once when using this fallback. The bundled XMRig binary is for x86-64 Linux.
+
+## Desktop appearance
+
+XMRiGUI defaults to Qt's Fusion widget style on both Ubuntu and Fedora KDE. System colors, fonts, scaling, and window decorations can still differ. Set `QT_STYLE_OVERRIDE` or pass Qt's `-style` option to choose a different widget style.
+
 ## Makefile Commands
 
 The Makefile installs the Python script and bundled miner directly; PyInstaller is not required.

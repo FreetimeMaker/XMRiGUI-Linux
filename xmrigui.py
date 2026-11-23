@@ -775,6 +775,22 @@ class Window(QMainWindow):
 
 
 def main():
+    is_wsl = sys.platform == "linux" and "microsoft" in os.uname().release.lower()
+    if (
+        is_wsl
+        and not any(
+            os.environ.get(name)
+            for name in ("DISPLAY", "WAYLAND_DISPLAY", "QT_QPA_PLATFORM")
+        )
+        and not any(arg in ("-platform", "--platform") for arg in sys.argv[1:])
+    ):
+        print(
+            "No GUI display available. Start XMRiGUI in WSL 2 with WSLg.",
+            file=sys.stderr,
+        )
+        return 1
+
+    os.environ.setdefault("QT_STYLE_OVERRIDE", "Fusion")
     app = QApplication(sys.argv)
     app.setApplicationName("XMRiGUI")
     app.setDesktopFileName("xmrigui")
@@ -784,6 +800,11 @@ def main():
             "Cannot connect to the session D-Bus: " + bus.lastError().message(),
             file=sys.stderr,
         )
+        if is_wsl:
+            print(
+                "Try starting XMRiGUI with: dbus-run-session -- xmrigui",
+                file=sys.stderr,
+            )
         return 1
     # Acquire the name before loading settings or starting any miner.
     if not bus.registerService(SERVICE):
