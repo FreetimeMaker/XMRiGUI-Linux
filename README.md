@@ -35,48 +35,67 @@ Built with **Python 3** and **PyQt6**. D-Bus integration uses **QtDBus**, which 
 
 #### Debian / Ubuntu (APT)
 
-1. Download the `.deb` file or use the APT Repository:
+Download the `.deb` file or use the APT Repository:
 
 ```bash
-sudo nano /etc/apt/sources.list.d/Freetime-Repo.list
+sudo cd /etc/apt/keyrings
+curl -fSLo freetime-repository.gpg https://repo.free-time.me/public.gpg
+gpg --show-keys --with-fingerprint freetime-repository.gpg
 ```
 
-then add:
+after that do:
 
-```text
-deb [trusted=yes arch=amd64] https://https://repo.free-time.me/apt/
+```bash
+sudo install -d -m 0755 /etc/apt/keyrings
+sudo install -m 0644 freetime-repository.gpg /etc/apt/keyrings/freetime-repository.gpg
+printf '%s\n' 'deb [arch=amd64 signed-by=/etc/apt/keyrings/freetime-repository.gpg] https://repo.free-time.me/apt/ stable main' | sudo tee /etc/apt/sources.list.d/freetime-repository.list
+sudo apt update
 ```
 
 then run:
 
 ```bash
-sudo apt update
 sudo apt install xmrigui
 ```
 
 #### Fedora / Red Hat (RPM)
 
-1. Download the `.rpm` file or use the YUM Repository:
+Download the `.rpm` file or use the YUM Repository:
 
 ```bash
-sudo nano /etc/yum.repos.d/Freetime-Repo.repo
+curl -fSLo freetime-repository.asc https://repo.free-time.me/yum/x86_64/public.asc
+gpg --show-keys --with-fingerprint freetime-repository.asc
+```
+
+then do:
+
+```bash
+sudo nano /etc/yum.repos.d/freetime-repository.repo
 ```
 
 then add:
 
 ```text
-[freetimemaker]
-name=Freetime Repo
-baseurl=https://repo.free-time.me/yum/
+[freetime-repository]
+name=Freetime Repository
+baseurl=https://repo.free-time.me/yum/x86_64/
 enabled=1
-gpgcheck=0
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://repo.free-time.me/yum/x86_64/public.asc
+
 ```
 
 then run:
 
 ```bash
+sudo dnf --refresh makecache
 sudo dnf install xmrigui
 ```
+
+Open **XMRiGUI** from the application menu or run `xmrigui`.
+
+To remove a packaged installation, run `sudo apt remove xmrigui` or `sudo dnf remove xmrigui`.
 
 ## Running from Source
 

@@ -6,5 +6,5 @@ Terminal=false
 Exec=xmrigui
 Name=XMRiGUI
 Icon=xmrigui
-Comment=A modern GUI for XMRig and other miners
+Comment=GUI wrapper for XMRig.
 Categories=Utility;Network;
