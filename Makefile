@@ -34,28 +34,22 @@ install: install-deps
 	cp xmrigui.png /opt/xmrigui/
 	cp xmrigui.png /usr/share/icons/hicolor/256x256/apps/
 	cp xmrigui.desktop /usr/share/applications/
-	cp xmrig /opt/xmrigui/
-	chmod +x /opt/xmrigui/xmrig
 	cp mining_tools.py /usr/local/bin/mining_tools.py
 	cp xmrigui.py /usr/local/bin/xmrigui
 	chmod +x /usr/local/bin/xmrigui
 
 uninstall:
 	rm /usr/local/bin/xmrigui /usr/local/bin/mining_tools.py
-	rm -rf /opt/xmrigui
 	rm /usr/share/icons/hicolor/256x256/apps/xmrigui.png
 	rm /usr/share/applications/xmrigui.desktop
 
 deb: deb-deps
 	mkdir -p $(package)/usr/local/bin/
-	mkdir -p $(package)/opt/xmrigui/
 	mkdir -p $(package)/usr/share/icons/hicolor/256x256/apps/
 	mkdir -p $(package)/usr/share/applications/
 	cp mining_tools.py $(package)/usr/local/bin/mining_tools.py
 	cp xmrigui.py $(package)/usr/local/bin/xmrigui
 	chmod +x $(package)/usr/local/bin/xmrigui
-	cp xmrig $(package)/opt/xmrigui/
-	chmod +x $(package)/opt/xmrigui/xmrig
 	cp xmrigui.png $(package)/opt/xmrigui/
 	cp xmrigui.png $(package)/usr/share/icons/hicolor/256x256/apps/
 	cp xmrigui.desktop $(package)/usr/share/applications/
@@ -63,7 +57,7 @@ deb: deb-deps
 
 rpm: rpm-deps
 	mkdir -p rpmbuild/BUILD rpmbuild/RPMS rpmbuild/SOURCES rpmbuild/SPECS rpmbuild/SRPMS
-	cp xmrigui.py mining_tools.py xmrig xmrigui.png xmrigui.desktop rpmbuild/SOURCES/
+	cp xmrigui.py mining_tools.py xmrigui.png xmrigui.desktop rpmbuild/SOURCES/
 	cp xmrigui.spec rpmbuild/SPECS/ 2>/dev/null || true
 	rpmbuild -bb --define "_topdir $(shell pwd)/rpmbuild" rpmbuild/SPECS/xmrigui.spec
 	cp rpmbuild/RPMS/*/*.rpm .
