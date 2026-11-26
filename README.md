@@ -38,7 +38,6 @@ Built with **Python 3** and **PyQt6**. D-Bus integration uses **QtDBus**, which 
 Download the `.deb` file or use the APT Repository:
 
 ```bash
-sudo cd /etc/apt/keyrings
 curl -fSLo freetime-repository.gpg https://repo.free-time.me/public.gpg
 gpg --show-keys --with-fingerprint freetime-repository.gpg
 ```
