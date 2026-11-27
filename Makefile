@@ -29,9 +29,7 @@ rpm-deps:
 	$(call install_dependencies,python3 python3-pyqt6 libuv1-dev rpm,python3 python3-pyqt6 libuv-devel rpm-build)
 
 install: install-deps
-	mkdir -p /opt/xmrigui
 	mkdir -p /usr/share/icons/hicolor/256x256/apps
-	cp xmrigui.png /opt/xmrigui/
 	cp xmrigui.png /usr/share/icons/hicolor/256x256/apps/
 	cp xmrigui.desktop /usr/share/applications/
 	cp mining_tools.py miner_installer.py /usr/local/bin/
@@ -39,7 +37,7 @@ install: install-deps
 	chmod +x /usr/local/bin/xmrigui
 
 uninstall:
-	rm /usr/local/bin/xmrigui /usr/local/bin/mining_tools.py /usr/local/bin/miner_installer.py
+	rm /usr/local/bin/mining_tools.py /usr/local/bin/miner_installer.py
 	rm /usr/share/icons/hicolor/256x256/apps/xmrigui.png
 	rm /usr/share/applications/xmrigui.desktop
 
@@ -50,7 +48,6 @@ deb: deb-deps
 	cp mining_tools.py miner_installer.py $(package)/usr/local/bin/
 	cp xmrigui.py $(package)/usr/local/bin/xmrigui
 	chmod +x $(package)/usr/local/bin/xmrigui
-	cp xmrigui.png $(package)/opt/xmrigui/
 	cp xmrigui.png $(package)/usr/share/icons/hicolor/256x256/apps/
 	cp xmrigui.desktop $(package)/usr/share/applications/
 	dpkg-deb --build --root-owner-group $(package)
