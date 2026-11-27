@@ -118,13 +118,15 @@ python3 xmrigui.py
 
 **Migration status:** These dependencies and instructions target the PyQt6 app. If your checkout's `xmrigui.py` still imports `gi` or `dbus`, its app-code migration must be completed before it can run with these dependencies.
 
-Mining requires an executable XMRig binary at `/opt/xmrigui/xmrig`; `sudo make install` installs the bundled `xmrig` there.
+XMRiGUI looks for an executable XMRig binary in `/opt/xmrigui/xmrig`, next to the application, in its `miner/` subdirectory, and in `$XDG_DATA_HOME/xmrigui/miner/xmrig` (default: `~/.local/share/xmrigui/miner/xmrig`). If none is found, open **Diagnostics → Download official XMRig…** to install the latest stable Linux x86-64 static build from the official GitHub repository. The download requires confirmation and network access; it verifies the archive size and SHA-256 digest before installing without administrator privileges. Existing binaries are not updated or overwritten.
+
+Opening the app does not start mining, even if profiles were running when it last closed. Review the pool and wallet, then start a profile manually or pass `start` explicitly.
 
 ## WSL 2 (Windows)
 
 Run the Linux app inside a WSL 2 distribution with WSLg, as your normal user (not with `sudo`). If no window opens, check `wsl --list --verbose` in PowerShell and update WSL with `wsl --update` if needed. If Qt reports that the `xcb` platform plugin cannot load when using the pip install on Ubuntu, install `libxcb-cursor0`.
 
-XMRiGUI needs a session D-Bus to forward launches to an existing instance. If it reports that it cannot connect, install `dbus` in Ubuntu and start the app with `dbus-run-session -- xmrigui` (or `dbus-run-session -- python xmrigui.py` from source). Launches in separate private D-Bus sessions do not share the single-instance check; run the app only once when using this fallback. The bundled XMRig binary is for x86-64 Linux.
+XMRiGUI needs a session D-Bus to forward launches to an existing instance. If it reports that it cannot connect, install `dbus` in Ubuntu and start the app with `dbus-run-session -- xmrigui` (or `dbus-run-session -- python xmrigui.py` from source). Launches in separate private D-Bus sessions do not share the single-instance check; run the app only once when using this fallback. The built-in XMRig download is for x86-64 Linux.
 
 ## Desktop appearance
 
@@ -132,7 +134,7 @@ XMRiGUI defaults to Qt's Fusion widget style on both Ubuntu and Fedora KDE. Syst
 
 ## Makefile Commands
 
-The Makefile installs the Python script and bundled miner directly; PyInstaller is not required.
+The Makefile installs the Python application directly; PyInstaller is not required.
 
 Before `make install`, `make deb` or `make rpm`, the required dependencies are installed automatically using APT (Debian / Ubuntu) or DNF (Fedora / Red Hat). This includes Python, PyQt6, libuv and the packaging tool needed by the selected build target (`dpkg-deb` or `rpmbuild`). Dependency installation requires network access and uses `sudo` unless already running as root.
 

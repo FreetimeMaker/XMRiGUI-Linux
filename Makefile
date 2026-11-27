@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := install
 .PHONY: install uninstall deb rpm install-deps deb-deps rpm-deps
 
-package = xmrigui_2.0.0_amd64
+package = xmrigui_2.1.0_amd64
 SKIP_DEPS ?= 0
 SUDO ?= $(shell if [ "$$(id -u)" -ne 0 ]; then printf sudo; fi)
 
@@ -34,12 +34,12 @@ install: install-deps
 	cp xmrigui.png /opt/xmrigui/
 	cp xmrigui.png /usr/share/icons/hicolor/256x256/apps/
 	cp xmrigui.desktop /usr/share/applications/
-	cp mining_tools.py /usr/local/bin/mining_tools.py
+	cp mining_tools.py miner_installer.py /usr/local/bin/
 	cp xmrigui.py /usr/local/bin/xmrigui
 	chmod +x /usr/local/bin/xmrigui
 
 uninstall:
-	rm /usr/local/bin/xmrigui /usr/local/bin/mining_tools.py
+	rm /usr/local/bin/xmrigui /usr/local/bin/mining_tools.py /usr/local/bin/miner_installer.py
 	rm /usr/share/icons/hicolor/256x256/apps/xmrigui.png
 	rm /usr/share/applications/xmrigui.desktop
 
@@ -47,7 +47,7 @@ deb: deb-deps
 	mkdir -p $(package)/usr/local/bin/
 	mkdir -p $(package)/usr/share/icons/hicolor/256x256/apps/
 	mkdir -p $(package)/usr/share/applications/
-	cp mining_tools.py $(package)/usr/local/bin/mining_tools.py
+	cp mining_tools.py miner_installer.py $(package)/usr/local/bin/
 	cp xmrigui.py $(package)/usr/local/bin/xmrigui
 	chmod +x $(package)/usr/local/bin/xmrigui
 	cp xmrigui.png $(package)/opt/xmrigui/
@@ -57,7 +57,7 @@ deb: deb-deps
 
 rpm: rpm-deps
 	mkdir -p rpmbuild/BUILD rpmbuild/RPMS rpmbuild/SOURCES rpmbuild/SPECS rpmbuild/SRPMS
-	cp xmrigui.py mining_tools.py xmrigui.png xmrigui.desktop rpmbuild/SOURCES/
+	cp xmrigui.py mining_tools.py miner_installer.py xmrigui.png xmrigui.desktop rpmbuild/SOURCES/
 	cp xmrigui.spec rpmbuild/SPECS/ 2>/dev/null || true
 	rpmbuild -bb --define "_topdir $(shell pwd)/rpmbuild" rpmbuild/SPECS/xmrigui.spec
 	cp rpmbuild/RPMS/*/*.rpm .

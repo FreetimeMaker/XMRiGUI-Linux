@@ -1,5 +1,5 @@
 Name:           xmrigui
-Version:        2.0.0
+Version:        2.1.0
 Release:        1%{?dist}
 Summary:        XMRiGUI Application
 License:        GPLv3
@@ -8,6 +8,7 @@ Source0:        xmrigui.py
 Source1:        xmrigui.png
 Source2:        xmrigui.desktop
 Source3:        mining_tools.py
+Source4:        miner_installer.py
 
 Requires:       python3 python3-pyqt6
 
@@ -23,6 +24,7 @@ mkdir -p %{buildroot}/usr/local/bin
 mkdir -p %{buildroot}/usr/share/icons/hicolor/256x256/apps
 mkdir -p %{buildroot}/usr/share/applications
 
+install -m 644 %{_sourcedir}/miner_installer.py %{buildroot}/usr/local/bin/miner_installer.py
 install -m 644 %{_sourcedir}/mining_tools.py %{buildroot}/usr/local/bin/mining_tools.py
 install -m 755 %{_sourcedir}/xmrigui.py %{buildroot}/usr/local/bin/xmrigui
 install -m 644 %{_sourcedir}/xmrigui.png %{buildroot}/opt/xmrigui/xmrigui.png
@@ -30,6 +32,7 @@ install -m 644 %{_sourcedir}/xmrigui.png %{buildroot}/usr/share/icons/hicolor/25
 install -m 644 %{_sourcedir}/xmrigui.desktop %{buildroot}/usr/share/applications/xmrigui.desktop
 
 %files
+/usr/local/bin/miner_installer.py
 /usr/local/bin/mining_tools.py
 /usr/local/bin/xmrigui
 /usr/share/icons/hicolor/256x256/apps/xmrigui.png

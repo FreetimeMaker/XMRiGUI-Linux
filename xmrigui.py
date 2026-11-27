@@ -8,7 +8,9 @@ import re
 import shlex
 import sys
 import time
+from concurrent.futures import Future
 from pathlib import Path
+from threading import Thread
 
 from PyQt6.QtCore import QObject, QProcess, Qt, QTimer, pyqtClassInfo, pyqtSlot
 from PyQt6.QtDBus import QDBusConnection, QDBusInterface, QDBusMessage
@@ -44,6 +46,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from miner_installer import discover_miner, install_latest, user_miner_path
 from mining_tools import HashrateChart, SessionStats, redact_log, validate_settings
 
 SERVICE = "com.freetime.xmrigui"
@@ -82,22 +85,22 @@ class Window(QMainWindow):
         self.shutting_down = False
         self.load_data()
         self.config = self.get_config()
+        for profile in self.profiles:
+            self.config[profile]["mine"] = False
+        self.install_job = None
+        self.install_timer = QTimer(self)
+        self.install_timer.timeout.connect(self.poll_miner_install)
         self.draw()
         self.tray = self.build_tray()
         self.stats_timer = QTimer(self)
         self.stats_timer.timeout.connect(self.refresh_stats)
         self.stats_timer.start(1000)
-        for profile in self.profiles:
-            if self.config[profile]["mine"]:
-                self.start_mining(profile, save=False)
 
     def load_data(self):
         base = Path(__file__).resolve().parent
         self.settings_path = Path.home() / ".config" / "xmrigui.json"
-        installed_miner = Path("/opt/xmrigui/xmrig")
-        self.xmrig_path = str(
-            installed_miner if installed_miner.exists() else base / "xmrig"
-        )
+        miner = discover_miner(base)
+        self.xmrig_path = str(miner) if miner else ""
         installed_icon = Path("/usr/share/icons/hicolor/256x256/apps/xmrigui.png")
         self.icon_path = str(
             installed_icon if installed_icon.exists() else base / "xmrigui.png"
@@ -191,7 +194,7 @@ class Window(QMainWindow):
         return config
 
     def draw(self):
-        self.setWindowTitle("XMRiGUI v2.0.0")
+        self.setWindowTitle("XMRiGUI v2.1.0")
         self.setWindowIcon(QIcon(self.icon_path))
         self.resize(800, 720)
         tabs = QTabWidget()
@@ -318,13 +321,21 @@ class Window(QMainWindow):
             diagnosis = QGroupBox("Diagnostics")
             diagnostic_layout = QVBoxLayout(diagnosis)
             widgets["diagnostics"] = QLabel(
-                f"Binary: {self.xmrig_path}\nVersion / Huge Pages / permissions: not reported yet"
+                f"Binary: {self.xmrig_path or 'not found'}\nVersion / Huge Pages / permissions: not reported yet"
             )
             widgets["diagnostics"].setWordWrap(True)
             diagnostic_layout.addWidget(widgets["diagnostics"])
             export = QPushButton("Export redacted log…")
             export.clicked.connect(lambda checked=False, p=profile: self.export_log(p))
             diagnostic_layout.addWidget(export)
+            install_button = widgets["install_button"] = QPushButton("Download official XMRig…")
+            install_button.setVisible(not self.xmrig_path)
+            install_button.clicked.connect(self.request_miner_install)
+            diagnostic_layout.addWidget(install_button)
+            install_status = widgets["install_status"] = QLabel()
+            install_status.setTextFormat(Qt.TextFormat.PlainText)
+            install_status.setWordWrap(True)
+            diagnostic_layout.addWidget(install_status)
             layout.addWidget(diagnosis)
 
             output = QGroupBox("Miner Output (Live)")
@@ -356,6 +367,55 @@ class Window(QMainWindow):
             widgets["crypto_chooser"].currentIndexChanged.connect(
                 lambda index: self.save()
             )
+
+    def request_miner_install(self):
+        if self.install_job is not None or self.xmrig_path:
+            return
+        destination = user_miner_path()
+        if QMessageBox.question(
+            self,
+            "Download XMRig?",
+            f"Download and verify the official Linux x86-64 release from GitHub?\n\n"
+            f"Install location: {destination}\n\nMining will not start automatically.",
+        ) != QMessageBox.StandardButton.Yes:
+            return
+
+        job = Future()
+        self.install_job = job
+
+        def install():
+            try:
+                job.set_result(install_latest(destination))
+            except Exception as error:
+                job.set_exception(error)
+
+        for widgets in self.widgets.values():
+            widgets["install_button"].setEnabled(False)
+            widgets["install_status"].setText("Downloading and verifying XMRig…")
+        Thread(target=install, daemon=True).start()
+        self.install_timer.start(100)
+
+    def poll_miner_install(self):
+        job = self.install_job
+        if job is None or not job.done():
+            return
+        self.install_timer.stop()
+        self.install_job = None
+        try:
+            version = job.result()
+            miner = discover_miner(Path(__file__).resolve().parent)
+            if miner is None:
+                raise OSError("No executable XMRig found after installation.")
+            self.xmrig_path = str(miner)
+            message = f"XMRig {version} installed. Review your profile before starting."
+        except Exception as error:
+            message = f"Installation failed: {error}"
+        for widgets in self.widgets.values():
+            widgets["install_status"].setText(message)
+            widgets["install_button"].setEnabled(True)
+            widgets["install_button"].setVisible(not self.xmrig_path)
+            if self.xmrig_path:
+                widgets["diagnostics"].setText(f"Binary: {self.xmrig_path}")
 
     def save(self, restart=True):
         for profile in self.profiles:
@@ -445,6 +505,9 @@ class Window(QMainWindow):
             self.mining_failed(
                 profile, "Invalid settings: " + "; ".join(errors.values())
             )
+            return
+        if not self.xmrig_path:
+            self.mining_failed(profile, "XMRig not found. See Diagnostics to install it.")
             return
         if not retry:
             widgets["retries"] = 0
@@ -768,6 +831,7 @@ class Window(QMainWindow):
     def shutdown(self):
         self.shutting_down = True
         self.stats_timer.stop()
+        self.install_timer.stop()
         for profile in self.profiles:
             self.stop_mining(profile, save=False)
         if self.tray is not None:

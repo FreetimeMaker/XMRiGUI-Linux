@@ -71,6 +71,22 @@ class WindowTests(unittest.TestCase):
         self.window.mining_arguments = lambda p: [str(script)]
         widgets["args_entry"].setText(shlex.quote(str(script)))
 
+    def test_saved_active_profile_does_not_start_on_launch(self):
+        config = self.window.get_config()
+        config["profile-0"]["mine"] = True
+        with (
+            patch.object(xmrigui.Window, "get_config", return_value=config),
+            patch.object(xmrigui.Window, "build_tray", return_value=None),
+            patch.object(xmrigui.Window, "start_mining") as start,
+        ):
+            window = xmrigui.Window()
+            try:
+                start.assert_not_called()
+                self.assertFalse(window.widgets["profile-0"]["mine_switch"].isChecked())
+            finally:
+                window.shutdown()
+                window.deleteLater()
+
     def test_profiles_and_saved_config(self):
         self.assertEqual(self.window.centralWidget().count(), 3)
         self.window.widgets["profile-1"]["pool_entry"].setText("example.org:3333")
