@@ -27,7 +27,6 @@ mkdir -p %{buildroot}/usr/share/applications
 install -m 644 %{_sourcedir}/miner_installer.py %{buildroot}/usr/local/bin/miner_installer.py
 install -m 644 %{_sourcedir}/mining_tools.py %{buildroot}/usr/local/bin/mining_tools.py
 install -m 755 %{_sourcedir}/xmrigui.py %{buildroot}/usr/local/bin/xmrigui
-install -m 644 %{_sourcedir}/xmrigui.png %{buildroot}/opt/xmrigui/xmrigui.png
 install -m 644 %{_sourcedir}/xmrigui.png %{buildroot}/usr/share/icons/hicolor/256x256/apps/xmrigui.png
 install -m 644 %{_sourcedir}/xmrigui.desktop %{buildroot}/usr/share/applications/xmrigui.desktop
 
